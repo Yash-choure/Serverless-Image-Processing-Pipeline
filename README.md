@@ -80,27 +80,5 @@ Processing 10,000 images per month costs roughly **$5–6** across Lambda, S3, D
 
 
 
-## Screenshots
-
-**S3 Source Bucket (original upload)**
-![S3 Source Bucket](Screenshots/source.png)
-
-**S3 Destination Bucket (resized/optimized output)**
-![S3 Destination Bucket](Screenshots/Destination-bucket.png)
-
-**Lambda Function Configuration**
-![Lambda Function](Screenshots/lambda-function.png)
-
-**CloudWatch Logs (successful invocation)**
-![CloudWatch Logs](Screenshots/cloudwatch-logs.png)
-
-**DynamoDB Metadata Record**
-![DynamoDB Metadata](Screenshots/dynamodb-Metadata.png)
-
-**SNS Email Notification**
-![SNS Email Notification](Screenshots/sns-notifications.png)
-
-**IAM policies**
-![IAM policies](Screenshots/Iam-Policies.png)
 
 
