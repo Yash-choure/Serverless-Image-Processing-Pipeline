@@ -69,3 +69,7 @@ This wasn't just about getting resizing to work — I wanted to practice thinkin
 - Actually locking down IAM permissions instead of leaving `FullAccess` policies in place
 - Building in monitoring and cost guardrails from the start, not bolting them on later
 - Thinking through what happens when something *fails*, not just when it succeeds
+
+
+
+![Destination-bucket](Screenshots/Destination-bucket.png.png)
