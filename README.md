@@ -1,84 +1,71 @@
 # Serverless Image Processing Pipeline on AWS
 
-An event-driven, serverless pipeline that automatically resizes and optimizes images on upload, tracks metadata for analytics, and sends real-time processing notifications — with zero servers to manage.
+I built this to solve a problem I kept running into: images uploaded at full resolution eat up storage and slow down page loads, and manually resizing them just doesn't scale. So instead, this pipeline does it automatically — the moment an image lands in S3, it gets resized, compressed, logged, and someone gets notified. No server ever spins up to do it.
 
-## Overview
+## What it does
 
-This project automates what would otherwise be a manual, repetitive task: resizing and optimizing images for storage and delivery. When an image lands in an S3 bucket, the pipeline detects the upload, resizes it while preserving aspect ratio, compresses it, records metadata about the transformation, and notifies stakeholders — all without a single running server.
+Drop an image into an S3 bucket and this happens behind the scenes:
 
-It's designed the way a production system would be: least-privilege IAM, encryption at rest, cost-aware storage lifecycle rules, and CloudWatch-based monitoring and alerting.
+- It gets resized to a sensible max size while keeping its original aspect ratio
+- The file size shrinks by roughly 40–70%, depending on the image
+- The resized version lands in a separate output bucket
+- Details about the transformation (original vs. resized dimensions, file sizes, timestamp) get saved to DynamoDB
+- An email (and optionally a Slack message) goes out letting you know it's done — or if something failed
 
+All of it runs on Lambda, so there's nothing to patch, scale, or babysit.
 
 ## Architecture
 
 ![AWS Architecture Diagram](aws-architeture.jpg)
-```
 
-**Flow:** S3 upload event → Lambda trigger → image resized with Pillow → resized file written to a separate output bucket → processing metadata written to DynamoDB → success/failure notification published to SNS (email + optional Slack webhook).
-
-## Key Features
-
-- **Automatic resizing** on upload, with aspect ratio preserved
-- **File size optimization** — typically 40–70% smaller than the original
-- **Metadata tracking** in DynamoDB (dimensions, sizes, timestamps, compression ratio) for analytics
-- **Real-time notifications** via email and Slack on both success and failure
-- **Fully event-driven** — no polling, no idle compute, no servers
-- **Scales automatically** from a single image to high-volume concurrent uploads
-- **Least-privilege IAM policies** scoped to specific buckets, table, and topic (not `*FullAccess`)
-- **Encryption at rest** on both S3 buckets and the DynamoDB table
-- **Cost controls** — S3 lifecycle rules to tier older originals to Infrequent Access/Glacier, DynamoDB TTL to expire old metadata, and CloudWatch billing alarms
+**The flow:** an image lands in the source S3 bucket → that upload triggers a Lambda function → Lambda resizes it with Pillow and writes the result to a second bucket → metadata about the whole process gets written to DynamoDB → SNS fires off a notification to email (and Slack, if you've wired it up).
 
 ## Tech Stack
 
-| Service | Role |
+| Service | What it's doing here |
 |---|---|
-| **AWS Lambda** (Python 3.11) | Core compute — image resizing and orchestration |
-| **Pillow (PIL)** | Image processing, packaged as a Lambda layer |
-| **Amazon S3** | Source bucket (uploads) and destination bucket (processed images) |
-| **Amazon DynamoDB** | On-demand table storing per-image processing metadata |
-| **Amazon SNS** | Fan-out notifications (email, Slack via webhook) |
-| **Amazon CloudWatch** | Logs, dashboards, and alarms (errors, duration, cost) |
-| **IAM** | Scoped execution role for the Lambda function |
+| **AWS Lambda** (Python 3.11) | Runs the resizing logic — this is where the actual work happens |
+| **Pillow (PIL)** | Handles the image processing, packaged as a Lambda layer |
+| **Amazon S3** | One bucket for uploads, a separate one for processed output |
+| **Amazon DynamoDB** | Stores metadata for every image that's been processed |
+| **Amazon SNS** | Sends out notifications — email and Slack |
+| **Amazon CloudWatch** | Logs, dashboards, and alarms so I can actually see what's happening |
+| **IAM** | A scoped-down role so Lambda only has access to what it actually needs |
 
-## How It Works
+## How it works, step by step
 
-1. A user (or application) uploads an image to the **source S3 bucket**.
-2. The upload event triggers the **image-processing Lambda function**.
-3. Lambda downloads the original, opens it with **Pillow**, and resizes it to a configurable max width/height while preserving aspect ratio.
-4. The resized image is written to a **separate destination bucket** — this keeps source and processed assets cleanly separated and avoids re-triggering the same function in a loop.
-5. Processing metadata (original/resized dimensions, file sizes, compression ratio, timestamp) is written to **DynamoDB**.
-6. A formatted summary is published to an **SNS topic**, fanning out to email and, optionally, a Slack channel.
-7. A secondary **monitoring Lambda** can run on a schedule to summarize daily throughput and estimated cost.
+1. Someone uploads an image to the source bucket.
+2. That upload event triggers the Lambda function automatically.
+3. Lambda pulls the image, opens it with Pillow, and resizes it — keeping the aspect ratio intact rather than stretching or cropping it.
+4. The resized image gets written to a *different* bucket than the source. This was a deliberate choice — writing back to the same bucket would risk re-triggering the function in a loop.
+5. Metadata about that image (dimensions before/after, file sizes, when it was processed) gets saved to DynamoDB.
+6. SNS publishes a summary, which goes out to email and, if configured, Slack.
+7. There's also a second, scheduled Lambda that puts together a daily summary of how much got processed and roughly what it cost.
 
-## Cost Profile
+## What it costs
 
-Processing 10,000 images per month costs roughly **$5–6** across Lambda, S3, DynamoDB, and SNS combined — compared to $30–50/month for an always-on EC2 instance, before accounting for the operational overhead of patching and scaling that instance manually.
+Processing 10,000 images a month runs about **$5–6** total across Lambda, S3, DynamoDB, and SNS. For comparison, keeping a small EC2 instance running 24/7 just to do this would cost $30–50/month — and that's before factoring in the time spent patching and maintaining it.
 
-## Security
+## Security decisions I made
 
-- IAM execution role scoped to the exact S3 buckets, DynamoDB table, and SNS topic used by this pipeline — no wildcard `FullAccess` policies
-- Server-side encryption enabled on both S3 buckets
-- DynamoDB encryption at rest
-- Bucket policies deny any non-HTTPS (`aws:SecureTransport: false`) requests
-- CloudTrail enabled for API-level audit logging
+- The Lambda's IAM role only has access to the exact S3 buckets, DynamoDB table, and SNS topic it needs — no blanket `FullAccess` permissions
+- Both S3 buckets have server-side encryption turned on
+- DynamoDB is encrypted at rest
+- Bucket policies reject any request that isn't over HTTPS
+- CloudTrail is on, so every API call against these resources is logged
 
-## Monitoring
+## Keeping an eye on it
 
-- CloudWatch dashboard tracking Lambda invocations, errors, and duration, plus S3 object counts
-- Alarms on elevated Lambda error rate and processing duration
-- AWS Budgets alert to catch unexpected cost spikes
+- A CloudWatch dashboard tracks Lambda invocations, errors, and how long each run takes
+- Alarms fire if the error rate climbs or processing starts taking too long
+- An AWS budget alert flags anything that starts costing more than expected
 
+## Why I built it this way
 
+This wasn't just about getting resizing to work — I wanted to practice thinking like the systems I'd eventually be responsible for in a real job. That meant:
 
-## What This Project Demonstrates
-
-- Designing event-driven serverless architectures on AWS (S3 → Lambda → DynamoDB/SNS)
-- Packaging third-party Python dependencies as Lambda layers
-- Applying least-privilege IAM in practice, not just in theory
-- Building in observability (CloudWatch dashboards/alarms) and cost controls (lifecycle policies, TTL, budgets) from the start
-- Thinking about failure handling and notification design for operational visibility
-
-
-
-
-
+- Designing an event-driven pipeline instead of something that polls or runs on a schedule
+- Packaging a third-party dependency (Pillow) as a Lambda layer rather than bundling it awkwardly into the function
+- Actually locking down IAM permissions instead of leaving `FullAccess` policies in place
+- Building in monitoring and cost guardrails from the start, not bolting them on later
+- Thinking through what happens when something *fails*, not just when it succeeds
