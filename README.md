@@ -93,3 +93,5 @@ This wasn't just about getting resizing to work — I wanted to practice thinkin
 
 ### 6. Cloudwatch logs 
 ![Cloudwatch](Screenshots/cloudwatch-logs.png)
+
+:
