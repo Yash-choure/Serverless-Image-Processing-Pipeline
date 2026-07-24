@@ -70,6 +70,26 @@ This wasn't just about getting resizing to work — I wanted to practice thinkin
 - Building in monitoring and cost guardrails from the start, not bolting them on later
 - Thinking through what happens when something *fails*, not just when it succeeds
 
+### Screenshots 
 
+### 1. IAM Role permission
+![IAM](Screenshots/Iam-Policies.png)
 
-![Destination-bucket](Screenshots/Destination-bucket.png.png)
+### 2. Source S3 Bucket
+![Source-bucket](Screenshots/source.png)
+
+### 3. Destination S3 Bucket
+![Destination-bucket](Screenshots/Destination-bucket.png)
+
+### 4. Lambda Function
+![Lambda-funcction](Screenshots/lambda-function.png)
+
+### 5. Lambda function overview
+
+![Dyanamo-db](Screenshots/dynamodb-Metadata.png)
+
+### 5. SNS email notification 
+![sns-notifications](Screenshots/sns-notifications.png)
+
+### 6. Cloudwatch logs 
+![Cloudwatch](Screenshots/cloudwatch-logs.png)
