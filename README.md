@@ -8,9 +8,11 @@ This project automates what would otherwise be a manual, repetitive task: resizi
 
 It's designed the way a production system would be: least-privilege IAM, encryption at rest, cost-aware storage lifecycle rules, and CloudWatch-based monitoring and alerting.
 
+
 ## Architecture
 
 ![AWS Architecture Diagram](aws-architeture.jpg)
+```
 
 **Flow:** S3 upload event → Lambda trigger → image resized with Pillow → resized file written to a separate output bucket → processing metadata written to DynamoDB → success/failure notification published to SNS (email + optional Slack webhook).
 
@@ -76,11 +78,29 @@ Processing 10,000 images per month costs roughly **$5–6** across Lambda, S3, D
 - Building in observability (CloudWatch dashboards/alarms) and cost controls (lifecycle policies, TTL, budgets) from the start
 - Thinking about failure handling and notification design for operational visibility
 
-## Future Improvements
 
-- Multi-size output (thumbnail / medium / large) for different use cases
-- CloudFront in front of the destination bucket for low-latency global delivery
-- Infrastructure as Code (Terraform/CloudFormation) instead of console-driven setup
-- Automated integration tests running in CI on every change
+
+## Screenshots
+
+**S3 Source Bucket (original upload)**
+![S3 Source Bucket](projects-ss/source-bucket.png)
+
+**S3 Destination Bucket (resized/optimized output)**
+![S3 Destination Bucket](projects-ss/Destination-bucket.png)
+
+**Lambda Function Configuration**
+![Lambda Function](projects-ss/lambda-function.png)
+
+**CloudWatch Logs (successful invocation)**
+![CloudWatch Logs](projects-ss/cloudwatch-logs.png)
+
+**DynamoDB Metadata Record**
+![DynamoDB Metadata](projects-ss/dynamodb-Metadata.png)
+
+**SNS Email Notification**
+![SNS Email Notification](projects-ss/sns-notifications.png)
+
+**IAM policies**
+![IAM policies](projects-ss/Iam-Policies.png.png)
 
 
