@@ -84,7 +84,7 @@ This wasn't just about getting resizing to work — I wanted to practice thinkin
 ### 4. Lambda Function
 ![Lambda-funcction](Screenshots/lambda-function.png)
 
-### 5. Lambda function overview
+### 5. DynaoDB Metadata
 
 ![Dyanamo-db](Screenshots/dynamodb-Metadata.png)
 
